@@ -124,7 +124,7 @@ def get_profile(student_id: int):
     con = db_conn()
     cur = con.cursor()
     cur.execute("""
-        SELECT student_id, course_name, semester, pole_name, weekly_hours, focus
+        SELECT student_id, course_name, semester, pole_name, weekly_hours, focus, study_disciplines
         FROM student_profile
         WHERE student_id=?
         LIMIT 1
@@ -134,7 +134,8 @@ def get_profile(student_id: int):
 
     if not row:
         return None
-
+    study_disciplines = row[6] or ""
+    keys = [k.strip() for k in study_disciplines.split(",") if k.strip()]
     return {
         "student_id": row[0],
         "course_name": row[1],
@@ -142,6 +143,7 @@ def get_profile(student_id: int):
         "pole_name": row[3],
         "weekly_hours": row[4],
         "focus": row[5],
+        "study_disciplines": keys,
     }
 
 def upsert_profile(
@@ -150,9 +152,12 @@ def upsert_profile(
     semester: int,
     pole_name: str,
     weekly_hours: int | None,
-    focus: str | None
+    focus: str | None,
+    study_disciplines: list[str] | None = None,
 ):
     now = datetime.utcnow().isoformat()
+    disciplines_csv = ",".join(study_disciplines or [])
+
     con = db_conn()
     cur = con.cursor()
 
@@ -162,17 +167,20 @@ def upsert_profile(
     if exists:
         cur.execute("""
             UPDATE student_profile
-            SET course_name=?, semester=?, pole_name=?, weekly_hours=?, focus=?, updated_at=?
+            SET course_name=?, semester=?, pole_name=?, weekly_hours=?, focus=?, study_disciplines=?, updated_at=?
             WHERE student_id=?
-        """, (course_name, semester, pole_name, weekly_hours, focus, now, student_id))
+        """, (course_name, semester, pole_name, weekly_hours, focus, disciplines_csv, now, student_id))
     else:
         cur.execute("""
-            INSERT INTO student_profile(student_id, course_name, semester, pole_name, weekly_hours, focus, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (student_id, course_name, semester, pole_name, weekly_hours, focus, now, now))
+            INSERT INTO student_profile(
+                student_id, course_name, semester, pole_name, weekly_hours, focus, study_disciplines, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (student_id, course_name, semester, pole_name, weekly_hours, focus, disciplines_csv, now, now))
 
     con.commit()
     con.close()
+
 
 # -------- Tasks --------
 def create_task(student_id: int, title: str, discipline: str | None, due_date: str, notes: str | None = None):
@@ -241,3 +249,52 @@ def upcoming_tasks(student_id: int, discipline: str | None = None, limit: int = 
     rows = cur.fetchall()
     con.close()
     return rows
+
+from datetime import datetime, timedelta
+
+def count_tasks(student_id: int, status: str | None = None) -> int:
+    con = db_conn()
+    cur = con.cursor()
+    if status:
+        cur.execute("SELECT COUNT(*) FROM tasks WHERE student_id=? AND status=?", (student_id, status))
+    else:
+        cur.execute("SELECT COUNT(*) FROM tasks WHERE student_id=?", (student_id,))
+    n = cur.fetchone()[0]
+    con.close()
+    return n
+
+def count_tasks_due_within_days(student_id: int, days: int = 7) -> int:
+    """
+    Conta tarefas pendentes com due_date <= hoje + days.
+    due_date está salvo como 'YYYY-MM-DD' no DB.
+    """
+    today = datetime.utcnow().date()
+    cutoff = today + timedelta(days=days)
+    con = db_conn()
+    cur = con.cursor()
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM tasks
+        WHERE student_id=? AND status='PENDING' AND due_date <= ?
+    """, (student_id, cutoff.isoformat()))
+    n = cur.fetchone()[0]
+    con.close()
+    return n
+
+def list_upcoming_tasks(student_id: int, limit: int = 5):
+    """
+    Retorna tarefas pendentes ordenadas por vencimento.
+    """
+    con = db_conn()
+    cur = con.cursor()
+    cur.execute("""
+        SELECT id, title, discipline, due_date, notes
+        FROM tasks
+        WHERE student_id=? AND status='PENDING'
+        ORDER BY due_date ASC
+        LIMIT ?
+    """, (student_id, limit))
+    rows = cur.fetchall()
+    con.close()
+    return rows
+

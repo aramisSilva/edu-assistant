@@ -1,3 +1,4 @@
+from src.core.dates import format_date_br
 from src.core.topics import TOPICS
 from src.core.poles import POLES
 
@@ -59,7 +60,7 @@ def _build_extra_context(student_id: int) -> str | None:
     tasks_lines = ["Prazos próximos (pendentes):"]
     if upcoming:
         for t_title, t_disc, t_due in upcoming:
-            tasks_lines.append(f"- {t_title} (disciplina: {t_disc or '—'}; vence em {t_due})")
+            tasks_lines.append(f"- {t_title} (disciplina: {t_disc or '—'}; vence em {format_date_br(t_due)})")
     else:
         tasks_lines.append("- Nenhum prazo cadastrado.")
 
