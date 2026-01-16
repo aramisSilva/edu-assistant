@@ -1,8 +1,11 @@
 import streamlit as st
 from datetime import date
+
 from src.core.config import DISCIPLINES
-from src.infra import repo
 from src.core.dates import format_date_br
+from src.core.deadlines import get_deadline_status
+from src.infra import repo
+
 
 def render_tasks(student_id: int):
     st.subheader("Prazos e atividades")
@@ -25,38 +28,43 @@ def render_tasks(student_id: int):
                 student_id=student_id,
                 title=title.strip(),
                 discipline=discipline_key,
-                due_date=due.isoformat(),
+                due_date=due.isoformat(),  # DB em ISO
                 notes=notes.strip() or None,
             )
             st.success("Atividade adicionada.")
             st.rerun()
 
     st.divider()
+
     st.subheader("Pendentes")
     pending = repo.list_tasks(student_id, status="PENDING")
     if not pending:
         st.info("Nenhuma atividade pendente.")
     else:
         for task_id, title, discipline, due_date, status, notes in pending:
-            cols = st.columns([5, 2, 2])
+            ds = get_deadline_status(due_date)
+            badge = f"[{ds.label}]"
+
+            cols = st.columns([6, 2, 2])
             with cols[0]:
-                st.write(f"**{title}**")
-                if discipline:
-                    st.caption(f"Disciplina: {discipline} | Vence em: {format_date_br(due_date)}")
-                else:
-                    st.caption(f"Vence em: {format_date_br(due_date)}")
+                st.write(f"**{badge} {title}**")
+                st.caption(f"Data: {format_date_br(due_date)} • Disciplina: {discipline or '—'}")
                 if notes:
                     st.caption(notes)
+
             with cols[1]:
                 if st.button("Concluir", key=f"done_{task_id}"):
                     repo.set_task_status(task_id, "DONE")
                     st.rerun()
+
             with cols[2]:
+                # opcional: reabrir não faz sentido em pendentes, mas mantive sua estrutura
                 if st.button("Reabrir", key=f"reopen_{task_id}"):
                     repo.set_task_status(task_id, "PENDING")
                     st.rerun()
 
-    st.divider()
+            st.markdown("---")
+
     st.subheader("Concluídas (últimas)")
     done = repo.list_tasks(student_id, status="DONE")
     if not done:

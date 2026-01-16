@@ -53,6 +53,7 @@ def init_db():
             pole_name TEXT NOT NULL,
             weekly_hours INTEGER,
             focus TEXT,
+            study_disciplines TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY(student_id) REFERENCES students(id)
