@@ -1,30 +1,21 @@
 from src.core.dates import format_date_br
 from src.core.topics import TOPICS
 from src.core.poles import POLES
-
-from src.services.llm import chat_completion, generate_pedagogical_answer, generate_short_title
+from src.core.curriculum import flatten_disciplines
+from src.services.llm import generate_pedagogical_answer, generate_short_title
 from src.infra import repo
 
 
-def classify_topic(discipline_key: str, user_text: str) -> str:
-    lowered = user_text.lower()
-    for t in TOPICS[discipline_key]:
-        if t.lower() in lowered:
+def classify_topic(discipline_key: str, text: str) -> str:
+    topics = TOPICS.get(discipline_key) or TOPICS.get("general") or []
+    text_l = text.lower()
+
+    for t in topics:
+        if t.lower() in text_l:
             return t
 
-    topics_list = ", ".join(TOPICS[discipline_key])
-    msgs = [
-        {
-            "role": "system",
-            "content": (
-                f"Classifique a pergunta em exatamente 1 tópico desta lista: {topics_list}. "
-                "Responda só com o nome do tópico."
-            ),
-        },
-        {"role": "user", "content": user_text},
-    ]
-    topic = chat_completion(msgs, temperature=0.0).strip()
-    return topic if topic in TOPICS[discipline_key] else "Sem tópico"
+    # fallback final
+    return topics[0] if topics else "Dúvidas gerais"
 
 
 def _build_extra_context(student_id: int) -> str | None:
@@ -33,12 +24,13 @@ def _build_extra_context(student_id: int) -> str | None:
         return None
 
     # Etapa 5 (como solicitado): forçar polo "Cuiabá" no contexto
-    forced_pole_name = "Cuiabá"
-    pole = POLES.get(forced_pole_name)
-
-    # Polo (endereço/contatos)
+    pole_name = profile.get("pole_name") or "Cuiabá"
+    pole = POLES.get(pole_name)
+    ...
     pole_lines = []
-    pole_lines.append(f"- Polo: {forced_pole_name}")
+    pole_lines.append(f"- Polo: {pole_name}")
+    # Polo (endereço/contatos)
+
     if pole:
         if pole.get("address"):
             pole_lines.append(f"- Endereço do polo: {pole['address']}")
@@ -63,12 +55,16 @@ def _build_extra_context(student_id: int) -> str | None:
             tasks_lines.append(f"- {t_title} (disciplina: {t_disc or '—'}; vence em {format_date_br(t_due)})")
     else:
         tasks_lines.append("- Nenhum prazo cadastrado.")
-
+    all_disc = flatten_disciplines()
+    disc_keys = profile.get("study_disciplines") or []
+    disc_labels = [all_disc[k]["name"] for k in disc_keys if k in all_disc]
+    disciplines_text = ", ".join(disc_labels) if disc_labels else "—"
     # Triagem + curso
     triage_lines = [
         "Contexto do aluno (triagem):",
         f"- Curso: {profile.get('course_name')}",
         f"- Semestre atual do aluno: {profile.get('semester')}/6",
+        f"- Disciplinas do semestre selecionadas pelo aluno: {disciplines_text}",
         f"- Dedicação semanal do aluno (não é carga horária do curso): {profile.get('weekly_hours')} horas/semana",
         f"- Foco atual do aluno (não é foco do curso): {profile.get('focus')}",
         "",
