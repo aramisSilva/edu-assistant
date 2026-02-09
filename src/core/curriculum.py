@@ -1,4 +1,3 @@
-# src/core/curriculum.py
 
 CURRICULUM = {
     1: {

@@ -34,7 +34,7 @@ def render_tasks(student_id: int):
             repo.create_task(
                 student_id=student_id,
                 title=title.strip(),
-                discipline=discipline_key,        # salva key real
+                discipline=discipline_key,
                 due_date=due.isoformat(),
                 notes=notes.strip() or None,
             )

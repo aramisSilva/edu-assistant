@@ -14,7 +14,6 @@ def classify_topic(discipline_key: str, text: str) -> str:
         if t.lower() in text_l:
             return t
 
-    # fallback final
     return topics[0] if topics else "Dúvidas gerais"
 
 
@@ -22,14 +21,11 @@ def _build_extra_context(student_id: int) -> str | None:
     profile = repo.get_profile(student_id)
     if not profile:
         return None
-
-    # Etapa 5 (como solicitado): forçar polo "Cuiabá" no contexto
     pole_name = profile.get("pole_name") or "Cuiabá"
     pole = POLES.get(pole_name)
     ...
     pole_lines = []
     pole_lines.append(f"- Polo: {pole_name}")
-    # Polo (endereço/contatos)
 
     if pole:
         if pole.get("address"):
@@ -47,7 +43,6 @@ def _build_extra_context(student_id: int) -> str | None:
     else:
         pole_lines.append("- (Dados do polo não encontrados no catálogo.)")
 
-    # Próximas tarefas
     upcoming = repo.upcoming_tasks(student_id, limit=5)
     tasks_lines = ["Prazos próximos (pendentes):"]
     if upcoming:
@@ -59,7 +54,7 @@ def _build_extra_context(student_id: int) -> str | None:
     disc_keys = profile.get("study_disciplines") or []
     disc_labels = [all_disc[k]["name"] for k in disc_keys if k in all_disc]
     disciplines_text = ", ".join(disc_labels) if disc_labels else "—"
-    # Triagem + curso
+
     triage_lines = [
         "Contexto do aluno (triagem):",
         f"- Curso: {profile.get('course_name')}",
@@ -99,26 +94,20 @@ def handle_user_message(
     conversation_id: int,
     user_text: str
 ):
-    # 1) Topic
     topic = classify_topic(discipline_key, user_text)
 
-    # 2) Save user message
     repo.save_message(student_id, discipline_key, conversation_id, "user", user_text, topic=topic)
 
-    # 3) Auto-title on first user message
     msgs = repo.load_messages(conversation_id, limit=80)
     user_msgs_count = sum(1 for r, _, _ in msgs if r == "user")
     if user_msgs_count == 1:
         title = generate_short_title(user_text)
         repo.rename_conversation(conversation_id, title)
 
-    # 4) Context (last 12 messages)
     context = [(r, c) for r, c, _ in msgs][-12:]
 
-    # 5) Extra context (triagem + curso + polo fixo Cuiabá + prazos)
     extra_context = _build_extra_context(student_id)
 
-    # 6) Answer
     answer = generate_pedagogical_answer(
         discipline_label=discipline_label,
         user_text=user_text,
@@ -126,7 +115,6 @@ def handle_user_message(
         extra_context=extra_context,
     )
 
-    # 7) Save assistant
     repo.save_message(student_id, discipline_key, conversation_id, "assistant", answer, topic=topic)
 
     return topic, answer

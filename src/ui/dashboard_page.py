@@ -15,7 +15,7 @@ def render_dashboard(student_id: int, discipline_key: str):
 
     pendentes = repo.count_tasks(student_id, status="PENDING")
     vencem_7d = repo.count_tasks_due_within_days(student_id, days=7)
-    proximas = repo.list_upcoming_tasks(student_id, limit=10)  # pegamos mais para priorização
+    proximas = repo.list_upcoming_tasks(student_id, limit=10)
     ranking = repo.topic_ranking(student_id, discipline_key, limit=10)
 
     st.subheader("Visão geral")
@@ -41,9 +41,7 @@ def render_dashboard(student_id: int, discipline_key: str):
 
     st.divider()
 
-    # --------------------------
-    # PLANO DE HOJE (botão)
-    # --------------------------
+
     st.subheader("Plano de hoje")
 
     if "today_plan_text" not in st.session_state:
@@ -68,9 +66,6 @@ def render_dashboard(student_id: int, discipline_key: str):
 
     st.divider()
 
-    # --------------------------
-    # PRÓXIMOS PRAZOS
-    # --------------------------
     st.subheader("Prazos próximos (pendentes)")
     if not proximas:
         st.info("Nenhuma atividade pendente cadastrada.")
@@ -87,9 +82,6 @@ def render_dashboard(student_id: int, discipline_key: str):
 
     st.divider()
 
-    # --------------------------
-    # TÓPICOS MAIS PESQUISADOS
-    # --------------------------
     st.subheader("Tópicos mais pesquisados (na disciplina selecionada)")
     if not ranking:
         st.info("Sem dados ainda. Faça algumas perguntas no chat para gerar histórico.")
@@ -99,9 +91,6 @@ def render_dashboard(student_id: int, discipline_key: str):
 
     st.divider()
 
-    # --------------------------
-    # SUGESTÃO DO DIA
-    # --------------------------
     st.subheader("Sugestão do dia")
     with st.spinner("Gerando sugestão..."):
         suggestion = generate_daily_suggestion(profile, ranking, proximas[:5])
