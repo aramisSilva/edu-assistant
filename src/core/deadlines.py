@@ -4,16 +4,15 @@ from datetime import datetime, date
 
 @dataclass(frozen=True)
 class DeadlineStatus:
-    code: str        # ex: OVERDUE, TODAY, TOMORROW, URGENT, SOON, PLANNED
-    label: str       # ex: "Atrasada", "Vence hoje"
-    days_left: int | None  # dias restantes (negativo se atrasada)
-    severity: int    # 0 (ok) .. 5 (crítico)
+    code: str
+    label: str
+    days_left: int | None
+    severity: int
 
 def _parse_iso_date(due_iso: str) -> date | None:
     if not due_iso:
         return None
     try:
-        # due_date salvo como 'YYYY-MM-DD'
         return datetime.strptime(due_iso[:10], "%Y-%m-%d").date()
     except Exception:
         return None

@@ -12,7 +12,6 @@ def generate_daily_suggestion(profile: dict, top_topics: list[tuple[str, int]], 
         [f"- {title} (vence em {format_date_br(due_date)})" for _, title, _, due_date, _ in upcoming_tasks]
     ) or "- (nenhum prazo cadastrado)"
 
-    # Campos com rótulos BR e sem ambiguidade (curso vs aluno)
     wh = profile.get("weekly_hours")
     wh_txt = f"{wh} horas/semana" if wh is not None else "—"
 

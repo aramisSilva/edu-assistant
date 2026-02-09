@@ -1,7 +1,6 @@
 from datetime import datetime
 from src.infra.db import db_conn
 
-# -------- Students --------
 def get_or_create_default_student(name: str = "Aluno") -> int:
     con = db_conn()
     cur = con.cursor()
@@ -21,7 +20,6 @@ def get_or_create_default_student(name: str = "Aluno") -> int:
     con.close()
     return sid
 
-# -------- Conversations --------
 def create_conversation(student_id: int, discipline: str, title: str = "Novo chat") -> int:
     con = db_conn()
     cur = con.cursor()
@@ -78,7 +76,6 @@ def touch_conversation(conversation_id: int):
     con.commit()
     con.close()
 
-# -------- Messages --------
 def save_message(student_id: int, discipline: str, conversation_id: int, role: str, content: str, topic: str = None):
     con = db_conn()
     cur = con.cursor()
@@ -119,7 +116,6 @@ def topic_ranking(student_id: int, discipline: str, limit: int = 10):
     con.close()
     return rows
 
-# -------- Profile --------
 def get_profile(student_id: int):
     con = db_conn()
     cur = con.cursor()
@@ -182,7 +178,6 @@ def upsert_profile(
     con.close()
 
 
-# -------- Tasks --------
 def create_task(student_id: int, title: str, discipline: str | None, due_date: str, notes: str | None = None):
     now = datetime.utcnow().isoformat()
     con = db_conn()
@@ -264,10 +259,7 @@ def count_tasks(student_id: int, status: str | None = None) -> int:
     return n
 
 def count_tasks_due_within_days(student_id: int, days: int = 7) -> int:
-    """
-    Conta tarefas pendentes com due_date <= hoje + days.
-    due_date está salvo como 'YYYY-MM-DD' no DB.
-    """
+
     today = datetime.utcnow().date()
     cutoff = today + timedelta(days=days)
     con = db_conn()
@@ -282,9 +274,7 @@ def count_tasks_due_within_days(student_id: int, days: int = 7) -> int:
     return n
 
 def list_upcoming_tasks(student_id: int, limit: int = 5):
-    """
-    Retorna tarefas pendentes ordenadas por vencimento.
-    """
+
     con = db_conn()
     cur = con.cursor()
     cur.execute("""

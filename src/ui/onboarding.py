@@ -10,7 +10,6 @@ def render_onboarding(student_id: int):
     st.header("Triagem do aluno")
     st.caption("Preencha para personalizar o assistente (curso, semestre, disciplinas, polo, foco e prazos).")
 
-    # Defaults
     if "onboarding_course_name" not in st.session_state:
         st.session_state.onboarding_course_name = DEFAULT_COURSE_NAME
     if "onboarding_semester" not in st.session_state:
@@ -22,7 +21,6 @@ def render_onboarding(student_id: int):
     if "onboarding_pole_name" not in st.session_state:
         st.session_state.onboarding_pole_name = "Cuiabá" if "Cuiabá" in POLES else list(POLES.keys())[0]
 
-    # Campos principais
     st.text_input(
         "Curso",
         key="onboarding_course_name",
@@ -48,7 +46,6 @@ def render_onboarding(student_id: int):
         placeholder="Ex.: melhorar em cálculo e revisar programação",
     )
 
-    # Disciplinas reais do semestre escolhido
     semester = int(st.session_state.onboarding_semester)
     semester_disc = get_disciplines_for_semester(semester)
 
@@ -59,11 +56,10 @@ def render_onboarding(student_id: int):
         "Disciplinas que você está estudando agora (do seu semestre)",
         options=disc_options,
         key="onboarding_study_disciplines",
-        default=disc_options,  # default: todas do semestre (deixa realista e evita vazio)
+        default=disc_options,
         help="Você pode ajustar depois em 'Editar perfil'.",
     )
 
-    # Polo por último (fora de form para atualizar em tempo real)
     st.markdown("### Polo (selecione por último)")
     st.selectbox(
         "Qual polo você está matriculado?",

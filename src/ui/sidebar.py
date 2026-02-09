@@ -44,7 +44,6 @@ def render_sidebar(student_id: int):
     st.sidebar.divider()
     st.sidebar.subheader("Chats")
 
-    # Mantém chats em uma categoria fixa para não mexer no seu chat agora
     discipline_label = "Chat geral"
     discipline_key = "general"
 

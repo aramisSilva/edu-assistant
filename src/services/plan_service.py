@@ -34,7 +34,6 @@ def build_today_plan_text(profile: dict, tasks_rows: list[tuple], max_tasks: int
     weekly_hours = profile.get("weekly_hours")
     focus = profile.get("focus") or "—"
 
-    # Ordenar por criticidade real (não só por data)
     sorted_rows = sorted(tasks_rows, key=lambda r: _sort_key_for_task(r[3]))
 
     selected = []
