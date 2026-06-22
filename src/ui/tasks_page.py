@@ -54,7 +54,7 @@ def render_tasks(student_id: int):
             ds = get_deadline_status(due_date)
             badge = f"[{ds.label}]"
 
-            discipline_label = all_disc.get(discipline, {}).get("name") if discipline else "—"
+            discipline_label = all_disc.get(discipline, {}).get("name", discipline) if discipline else "—"
 
             cols = st.columns([6, 2, 2])
             with cols[0]:
@@ -81,5 +81,5 @@ def render_tasks(student_id: int):
         st.info("Nenhuma atividade concluída ainda.")
     else:
         for task_id, title, discipline, due_date, status, notes in done[:10]:
-            discipline_label = all_disc.get(discipline, {}).get("name") if discipline else "—"
+            discipline_label = all_disc.get(discipline, {}).get("name", discipline) if discipline else "—"
             st.write(f"- {title} (vencimento {format_date_br(due_date)} • {discipline_label})")

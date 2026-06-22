@@ -5,6 +5,8 @@ from src.core.dates import format_date_br
 from src.core.deadlines import get_deadline_status
 from src.services.dashboard_service import generate_daily_suggestion
 from src.services.plan_service import build_today_plan_text
+from src.services.moodle_client import MoodleClientError
+from src.services.moodle_sync import sync_moodle
 
 
 def render_dashboard(student_id: int, discipline_key: str):
@@ -12,6 +14,22 @@ def render_dashboard(student_id: int, discipline_key: str):
     if not profile:
         st.info("Triagem não encontrada.")
         return
+
+    sync_state = repo.get_moodle_sync_state(student_id)
+    moodle_courses = repo.list_moodle_courses(student_id)
+    if st.button("Sincronizar Moodle", key="btn_sync_moodle"):
+        try:
+            with st.spinner("Sincronizando cursos e prazos do Moodle..."):
+                result = sync_moodle(student_id)
+            st.success(f"Moodle sincronizado: {result['courses']} curso(s) e {result['tasks']} prazo(s).")
+            st.rerun()
+        except MoodleClientError as exc:
+            st.error(str(exc))
+
+    if sync_state:
+        st.caption(f"Ultima sincronizacao Moodle: {sync_state['last_synced_at']}")
+    if moodle_courses:
+        st.caption("Cursos Moodle: " + ", ".join(course[2] for course in moodle_courses))
 
     pendentes = repo.count_tasks(student_id, status="PENDING")
     vencem_7d = repo.count_tasks_due_within_days(student_id, days=7)

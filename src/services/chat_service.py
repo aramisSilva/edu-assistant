@@ -1,20 +1,50 @@
 from src.core.dates import format_date_br
-from src.core.topics import TOPICS
+import unicodedata
+
+from src.core.topics import TOPICS, TOPIC_ALIASES
 from src.core.poles import POLES
 from src.core.curriculum import flatten_disciplines
-from src.services.llm import generate_pedagogical_answer, generate_short_title
+from src.services.llm import generate_pedagogical_answer, generate_short_title, generate_topic_label
 from src.infra import repo
 
 
-def classify_topic(discipline_key: str, text: str) -> str:
+def _normalize_text(text: str) -> str:
+    normalized = unicodedata.normalize("NFKD", text.lower())
+    return "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+
+def _clean_generated_topic(topic: str) -> str:
+    topic = " ".join((topic or "").strip().strip("\"'`.,:;!?").split())
+    if not topic:
+        return "Dúvidas gerais"
+    if len(topic) > 60 or len(topic.split()) > 5 or "\n" in topic:
+        return "Dúvidas gerais"
+    return topic[0].upper() + topic[1:]
+
+
+def _classify_topic_by_alias(discipline_key: str, text: str) -> str | None:
     topics = TOPICS.get(discipline_key) or TOPICS.get("general") or []
-    text_l = text.lower()
+    text_l = _normalize_text(text)
 
-    for t in topics:
-        if t.lower() in text_l:
-            return t
+    for topic in topics:
+        aliases = [topic, *TOPIC_ALIASES.get(topic, [])]
+        if any(_normalize_text(alias) in text_l for alias in aliases):
+            return topic
 
-    return topics[0] if topics else "Dúvidas gerais"
+    return None
+
+
+def classify_topic(discipline_key: str, text: str) -> str:
+    known_topic = _classify_topic_by_alias(discipline_key, text)
+    if known_topic:
+        return known_topic
+
+    try:
+        generated_topic = generate_topic_label(text)
+    except Exception:
+        generated_topic = ""
+
+    return _clean_generated_topic(generated_topic)
 
 
 def _build_extra_context(student_id: int) -> str | None:
@@ -50,6 +80,15 @@ def _build_extra_context(student_id: int) -> str | None:
             tasks_lines.append(f"- {t_title} (disciplina: {t_disc or '—'}; vence em {format_date_br(t_due)})")
     else:
         tasks_lines.append("- Nenhum prazo cadastrado.")
+    moodle_courses = repo.list_moodle_courses(student_id)
+    moodle_lines = ["Cursos importados do Moodle:"]
+    if moodle_courses:
+        moodle_lines.extend(
+            f"- {fullname} ({shortname or external_id})"
+            for external_id, shortname, fullname in moodle_courses
+        )
+    else:
+        moodle_lines.append("- Nenhum curso sincronizado.")
     all_disc = flatten_disciplines()
     disc_keys = profile.get("study_disciplines") or []
     disc_labels = [all_disc[k]["name"] for k in disc_keys if k in all_disc]
@@ -76,6 +115,8 @@ def _build_extra_context(student_id: int) -> str | None:
     triage_lines.extend(pole_lines)
     triage_lines.append("")
     triage_lines.extend(tasks_lines)
+    triage_lines.append("")
+    triage_lines.extend(moodle_lines)
     triage_lines.append("")
     triage_lines.append(
         "Use esse contexto quando o aluno perguntar sobre curso, semestre, polo/endereço/contatos, prazos, organização e recomendações. "
